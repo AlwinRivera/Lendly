@@ -44,6 +44,10 @@
             border-radius: 5px;
             margin-top: 10px;
         }
+        .loan-item.paid {
+            background: #d4edda;
+            text-decoration: line-through;
+        }
         .loan-actions {
             display: flex;
             gap: 5px;
@@ -66,47 +70,66 @@
         <input type="number" id="amount" placeholder="Amount (₱)">
         <input type="date" id="dueDate">
         <button onclick="addLoan()" style="background: green; color: white;">Add Loan</button>
+        <select id="filter" onchange="renderLoans()">
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+        </select>
         <div id="loanList"></div>
+        <h3>Total Loaned: ₱<span id="totalLoaned">0</span></h3>
+        <h3>Total Pending: ₱<span id="totalPending">0</span></h3>
     </div>
     <script>
         let loans = JSON.parse(localStorage.getItem("loans")) || [];
+
         function renderLoans() {
             const loanList = document.getElementById("loanList");
+            const filter = document.getElementById("filter").value;
             loanList.innerHTML = "";
+            let totalLoaned = 0, totalPending = 0;
             loans.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
             loans.forEach((loan, index) => {
+                if (filter !== "all" && loan.status !== filter) return;
                 const loanItem = document.createElement("div");
-                loanItem.className = "loan-item";
+                loanItem.className = "loan-item " + (loan.status === "paid" ? "paid" : "");
                 loanItem.innerHTML = `
                     ${loan.borrower} - ₱${loan.amount} (Due: ${loan.dueDate})
                     <div class="loan-actions">
-                        <button class="paid-btn" onclick="markAsPaid(${index})">✔</button>
+                        ${loan.status === "pending" ? `<button class="paid-btn" onclick="markAsPaid(${index})">✔</button>` : ""}
                         <button class="delete-btn" onclick="deleteLoan(${index})">X</button>
                     </div>
                 `;
                 loanList.appendChild(loanItem);
+                totalLoaned += parseFloat(loan.amount);
+                if (loan.status === "pending") totalPending += parseFloat(loan.amount);
             });
+            document.getElementById("totalLoaned").innerText = totalLoaned;
+            document.getElementById("totalPending").innerText = totalPending;
             localStorage.setItem("loans", JSON.stringify(loans));
         }
+
         function addLoan() {
             const borrower = document.getElementById("borrower").value;
             const amount = document.getElementById("amount").value;
             const dueDate = document.getElementById("dueDate").value;
             if (!borrower || !amount || !dueDate) return alert("Please fill all fields");
-            loans.push({ borrower, amount, dueDate });
+            loans.push({ borrower, amount, dueDate, status: "pending" });
             renderLoans();
             document.getElementById("borrower").value = "";
             document.getElementById("amount").value = "";
             document.getElementById("dueDate").value = "";
         }
+
         function deleteLoan(index) {
             loans.splice(index, 1);
             renderLoans();
         }
+
         function markAsPaid(index) {
-            alert(`${loans[index].borrower}'s loan is marked as paid!`);
-            deleteLoan(index);
+            loans[index].status = "paid";
+            renderLoans();
         }
+
         renderLoans();
     </script>
 </body>
